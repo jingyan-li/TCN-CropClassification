@@ -2,7 +2,7 @@ import torch.utils.data
 import torch
 import numpy as np
 import h5py
-
+import pickle
 class Dataset(torch.utils.data.Dataset):
     def __init__(self, path, time_downsample_factor=1, num_channel=9):
 
@@ -96,6 +96,15 @@ if __name__ == "__main__":
     print(y.shape)
     gt_list = traindataset.return_labels()
     labels, pix_counts = np.unique(gt_list, return_counts=True)
+
+    # Save label counts to file
+    label_count = {_[0]:_[1]/len(gt_list) for _ in zip(labels,pix_counts)}
+    for i in range(max(labels)+1):
+        if i not in label_count.keys():
+            label_count[i] = 0.
+    label_weights = [v for k, v in sorted(label_count.items(), key=lambda _:_[0])]
+    with open("label_count.pkl", "wb") as f:
+        pickle.dump(label_weights, f)
 
     inds = pix_counts.argsort()
     pix_counts_sorted = pix_counts[inds]

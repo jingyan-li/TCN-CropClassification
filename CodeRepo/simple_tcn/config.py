@@ -11,7 +11,17 @@ config["optim"] = "Adam"
 config["nhid"] = 25
 config["seed"] = 2021
 
-config["log-interval"] = 100
+config["log-interval"] = 1000
 
 config["data-path"] = "D:\jingyli\II_Lab3\data\imgint_trainset.hdf5"
 config["checkpoint-path"] = "D:\jingyli\II_Lab3\checkpoints"
+config["label-path"] = "D:\jingyli\II_Lab3\utils\label_count.pkl"
+
+config["label-names"] = ['Unknown', 'Apples', 'Beets', 'Berries', 'Biodiversity area', 'Buckwheat',
+               'Chestnut', 'Chicory', 'Einkorn wheat', 'Fallow', 'Field bean', 'Forest',
+               'Gardens', 'Grain', 'Hedge', 'Hemp', 'Hops', 'Legumes', 'Linen', 'Lupine',
+               'Maize', 'Meadow', 'Mixed crop', 'Multiple', 'Mustard', '25-Undefined', 'Oat', 'Pasture', 'Pears',
+               'Peas', 'Potatoes', 'Pumpkin', 'Rye', 'Sorghum', 'Soy', '35-Undefined', 'Spelt', 'Stone fruit',
+               'Sugar beet', 'Summer barley', 'Summer rapeseed', 'Summer wheat', 'Sunflowers',
+               'Tobacco', 'Tree crop', 'Vegetables', 'Vines', '47-Undefined', 'Wheat', 'Winter barley',
+               'Winter rapeseed', 'Winter wheat']
