@@ -1,0 +1,12 @@
+data
+checkpoints
+*.h5py
+*.log
+*.json
+*.wandb
+*.log
+*.json
+*.wandb
+**/.idea
+**/wandb
+*.pyc
