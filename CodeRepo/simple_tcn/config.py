@@ -1,12 +1,12 @@
 config = dict()
 config["test"] = False
-config["batch_size"] = 256
+config["batch_size"] = 64
 config["cuda"] = True
 config["dropout"] = 0.05
 config["epochs"] = 20
 config["kernel-size"] = 5
 config["levels"] = 6
-config["learning-rate"] = 2e-3
+config["learning-rate"] = 0.01
 config["optim"] = "Adam"
 config["nhid"] = 25
 config["seed"] = 2021

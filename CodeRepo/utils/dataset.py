@@ -3,44 +3,58 @@ import torch
 import numpy as np
 import h5py
 import pickle
+
+
 class Dataset(torch.utils.data.Dataset):
     def __init__(self, path, time_downsample_factor=1, num_channel=9):
-
         self.num_channel = num_channel
         self.time_downsample_factor = time_downsample_factor
         self.eval_mode = False
-        # Open the data file
-        self.data = h5py.File(path, "r", libver='latest', swmr=True)
+        self.path = path
+        self.time_downsample_factor = time_downsample_factor
+        self.hasData = False
+        self.num_samples = 7349476
+        self.load_data()
 
-        data_shape = self.data["data"].shape
-        target_shape = self.data["gt"].shape
+    def load_data(self):
+        print("Start loading...")
+        # Load all data in memory
+        with h5py.File(self.path, "r", libver='latest', swmr=True) as f:
+            self.data = f["data"][:].copy()
+            self.gt = f["gt"][:].copy()
+
+        data_shape = self.data.shape
+        target_shape = self.gt.shape
         self.num_samples = data_shape[0]
 
         if len(target_shape) == 3:
-            self.eval_mode=True
-            self.num_pixels = target_shape[0]*target_shape[1]*target_shape[2]
+            self.eval_mode = True
+            self.num_pixels = target_shape[0] * target_shape[1] * target_shape[2]
         else:
             self.num_pixels = target_shape[0]
 
-        label_idxs = np.unique(self.data["gt"])
+        label_idxs = np.unique(self.gt)
         self.n_classes = len(label_idxs)
-        self.temporal_length = data_shape[-2]//time_downsample_factor
+        self.temporal_length = data_shape[-2] // self.time_downsample_factor
 
         print('Number of pixels: ', self.num_pixels)
         print('Number of classes: ', self.n_classes)
         print('Temporal length: ', self.temporal_length)
         print('Number of channels: ', self.num_channel)
+        self.hasData = True
 
     def return_labels(self):
-        return self.data["gt"]
+        return self.gt
 
     def __len__(self):
         return self.num_samples
 
     def __getitem__(self, idx):
+        # if not self.hasData:
+        #     self.load_data()
 
-        X = self.data["data"][idx]
-        target = self.data["gt"][idx]
+        X = self.data[idx]
+        target = self.gt[idx]
 
         # Convert numpy array to torch tensor
         X = torch.from_numpy(X)
@@ -88,7 +102,6 @@ def plot_bands(X):
     plt.savefig("bands.png", dpi=300, format="png", bbox_inches='tight')
 
 if __name__ == "__main__":
-
     data_path = "D:\jingyli\II_Lab3\data/imgint_trainset.hdf5"
     traindataset = Dataset(data_path)
     X,y = traindataset.__getitem__(0)

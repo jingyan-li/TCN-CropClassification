@@ -19,7 +19,7 @@ from simple_tcn.config import config
 from utils.metrics import get_confmat_metrics
 
 # Visualize training
-wandb.init(project="ii-lab3", entity="jejejennea")
+wandb.init(project="ii-lab3", entity="jejejennea", mode="online")
 
 
 # Read configs
@@ -77,8 +77,8 @@ print(config)
 dataset = Dataset(path=data_path, time_downsample_factor=1, num_channel=input_channels)
 RANDOM_SPLIT = int(dataset.__len__()*0.8)
 train_dset, val_dset = random_split(dataset, [RANDOM_SPLIT, dataset.__len__()-RANDOM_SPLIT])
-train_loader = torch.utils.data.DataLoader(train_dset, batch_size=batch_size)
-val_loader = torch.utils.data.DataLoader(val_dset, batch_size=batch_size)
+train_loader = torch.utils.data.DataLoader(train_dset, batch_size=batch_size, num_workers=0)
+val_loader = torch.utils.data.DataLoader(val_dset, batch_size=batch_size, num_workers=0)
 # Model
 model = TCN(input_channels, n_classes, output_channels, kernel_size=kernel_size, dropout=dropout)
 
@@ -181,7 +181,7 @@ if __name__ == "__main__":
                 'loss': min_loss,
             }, os.path.join(cp_path, f"best-epoch{epoch}.pt"))
             print(f"Saved checkpoint for epoch {epoch}")
-        if epoch % 10 == 0:
+        if epoch % 5 == 0:
             lr /= 10
             for param_group in optimizer.param_groups:
                 param_group['lr'] = lr
