@@ -16,6 +16,8 @@ from simple_tcn.model import TCN
 from utils.dataset import Dataset
 from simple_tcn.config import config
 
+from utils.metrics import get_confmat_metrics
+
 # Visualize training
 wandb.init(project="ii-lab3", entity="jejejennea")
 
@@ -23,6 +25,7 @@ wandb.init(project="ii-lab3", entity="jejejennea")
 # Read configs
 SEED = config["seed"]
 CUDA = config["cuda"]
+TEST = config["test"]
 batch_size = config["batch_size"]
 epochs = config["epochs"]
 kernel_size = config["kernel-size"]
@@ -30,7 +33,7 @@ dropout = config["dropout"]
 lr = config["learning-rate"]
 optimizer = config["optim"]
 
-log_interval = config["log-interval"]
+log_interval = config["log-interval"] if not TEST else 10
 
 n_hunits = config["nhid"]
 n_levels = config["levels"]
@@ -63,9 +66,9 @@ input_channels = 4
 output_channels = [n_hunits]*n_levels   # TODO: Hidden units (channels)
 seq_length = 71  # Temporal length per sample
 steps = 0
-
+label_weights = []
 with open(label_path, "rb") as f:
-    label_weights = pickle.load(label_path)
+    label_weights = pickle.load(f)
 label_weights = torch.Tensor(label_weights)
 label_names = config["label-names"]
 print(config)
@@ -85,19 +88,19 @@ if CUDA:
 optimizer = getattr(optim, optimizer)(model.parameters(), lr=lr)
 
 
-def train(ep):
+def train(ep, label_weights):
     global steps
     train_loss = 0
     model.train()
     for batch_idx, (data, target) in tqdm(enumerate(train_loader)):
         if CUDA:
-            data, target = data.cuda(), target.cuda()
+            data, target, label_weights = data.cuda(), target.cuda(), label_weights.cuda()
         data = torch.swapaxes(data, 1, 2)  # data of shape [batch_size, n_channels, input_length]
         data, target = Variable(data), Variable(target)
         # compute output and loss
         output = model(data)
         # TODO: Change loss function, add weights
-        loss = F.nll_loss(output, target, weight=label_weights)
+        loss = F.cross_entropy(output, target, weight=label_weights)
         # compute gradient and do update step
         optimizer.zero_grad()
         loss.backward()
@@ -105,49 +108,68 @@ def train(ep):
         # update loss
         train_loss += loss
         # TODO: Change steps
-        steps += seq_length
+        steps += 1
         if batch_idx > 0 and batch_idx % log_interval == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}\tSteps: {}'.format(
                 ep, batch_idx * batch_size, len(train_loader.dataset),
                 100. * batch_idx / len(train_loader), train_loss.item()/log_interval, steps))
             wandb.log({"loss": train_loss.item()/log_interval})
             train_loss = 0
+            if TEST:
+                break
 
+# WANDB Tables
+f1_Table = wandb.Table(columns=label_names)
+precision_Table = wandb.Table(columns=label_names)
+recall_Table = wandb.Table(columns=label_names)
 
-def validation():
+def validation(label_weights):
+
     model.eval()
     test_loss = 0
     correct = 0
     with torch.no_grad():
-        for data, target in tqdm(val_loader):
+        confusion_matrix = torch.zeros(n_classes, n_classes)
+        for batch_idx, (data, target) in tqdm(enumerate(val_loader)):
             if CUDA:
-                data, target = data.cuda(), target.cuda()
+                data, target, label_weights = data.cuda(), target.cuda(), label_weights.cuda()
             data = torch.swapaxes(data, 1, 2)  # data of shape [batch_size, n_channels, input_length]
             data, target = Variable(data), Variable(target)
             output = model(data)
-            test_loss += F.nll_loss(output, target, size_average=False, weight=label_weights).item()
-            pred = output.data.max(1, keepdim=True)[1]
+            test_loss += F.cross_entropy(output, target, weight=label_weights).item()
+            pred = output.data.max(1, keepdim=False)[1]
             correct += pred.eq(target.data.view_as(pred)).cpu().sum()
-            # Log confusion matrix
-            wandb.log({"val_conf_mat":
-                        wandb.plot.confusion_matrix(probs=None,
-                                                    y_true=target.data.cpu(),
-                                                    preds=pred.data.cpu(),
-                                                    class_names=label_names)})
-        test_loss /= len(val_loader.dataset)
+            for t, p in zip(target.view(-1), pred.view(-1)):
+                confusion_matrix[t.long(), p.long()] += 1
+            if TEST and batch_idx > 10:
+                break
+
+        test_loss /= batch_idx+1
         print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
             test_loss, correct, len(val_loader.dataset),
             100. * correct / len(val_loader.dataset)))
-        wandb.log({"val_loss": test_loss})
+        confusion_matrix = confusion_matrix.numpy()
+        precision, recall, f1 = get_confmat_metrics(confusion_matrix)
+        f1_Table.add_data(*f1)
+        precision_Table.add_data(*precision)
+        recall_Table.add_data(*recall)
         # TODO: Log f1 score, confusion mat, overall accuracy
+        wandb.log({
+            "val_loss": test_loss,
+            "val_acc": 100. * correct / len(val_loader.dataset),
+            # "val_confmat": wandb.Table(columns=label_names, data=confusion_matrix.numpy().tolist()),
+            "val_f1_intrain": f1_Table,
+            "val_precision_intrain": precision_Table,
+            "val_recall_intrain": recall_Table,
+        })
         return test_loss
 
 
 if __name__ == "__main__":
     min_loss = 100
     for epoch in range(1, epochs+1):
-        train(epoch)
-        val_loss = validation()
+        train(epoch, label_weights)
+        val_loss = validation(label_weights)
         # TODO: Add early stop
         if val_loss < min_loss:
             min_loss = val_loss
@@ -158,11 +180,18 @@ if __name__ == "__main__":
                 'optimizer_state_dict': optimizer.state_dict(),
                 'loss': min_loss,
             }, os.path.join(cp_path, f"best-epoch{epoch}.pt"))
+            print(f"Saved checkpoint for epoch {epoch}")
         if epoch % 10 == 0:
             lr /= 10
             for param_group in optimizer.param_groups:
                 param_group['lr'] = lr
-
+        if TEST and epoch > 2:
+            break
+    wandb.log({
+        "val_f1": f1_Table,
+        "val_precision": precision_Table,
+        "val_recall": recall_Table,
+    })
     # Save final checkpoint
     torch.save({
         'epoch': epoch,
