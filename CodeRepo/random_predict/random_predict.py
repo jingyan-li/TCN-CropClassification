@@ -20,7 +20,8 @@ def calculate_scores(cof_mat):
     precision = np.diagonal(cof_mat) / np.sum(cof_mat, axis=0)  # TP/P
     recall = np.diagonal(cof_mat) / np.sum(cof_mat, axis=1)  # TP/T
     f1 = 2 * precision * recall / (precision + recall)
-    return precision, recall, f1
+    overall_accuracy = np.sum(np.diagonal(cof_mat)) / np.sum(cof_mat)
+    return precision, recall, f1, overall_accuracy
 
 if __name__ == "__main__":
     MODEL_TITLE = "random_prediction"
@@ -37,10 +38,10 @@ if __name__ == "__main__":
     dataset = Dataset(path=data_path, time_downsample_factor=1, num_channel=input_channels)
     gt_list = dataset.return_labels()
     labels, pix_counts = np.unique(gt_list, return_counts=True)
-    inds = pix_counts.argsort()
-    pix_counts_sorted = pix_counts[inds]
-    labels_sorted = labels[inds]
-    label_names_sorted = [label_names[labels.tolist().index(x)] for x in labels_sorted]
+    # inds = pix_counts.argsort()
+    # pix_counts_sorted = pix_counts[inds]
+    # labels_sorted = labels[inds]
+    # label_names_sorted = [label_names[labels.tolist().index(x)] for x in labels_sorted]
 
     weights = pix_counts / np.sum(pix_counts)
 
@@ -63,9 +64,10 @@ if __name__ == "__main__":
         y_pred = np.random.choice(a=len(labels), size=y.shape, p=weights)
         cof_mat += metrics.confusion_matrix(y, y_pred, labels=labels)
 
-    precision, recall, f1 = calculate_scores(cof_mat)
+    precision, recall, f1, overall_accuracy = calculate_scores(cof_mat)
 
     print(f"Final validation score: \nprecision - {precision}\nrecall - {recall}\nf1 - {f1}")
+    print(f"Overall accuracy: {overall_accuracy}")
     # Save scores
     if not os.path.exists(os.path.join(LOG_PATH, MODEL_TITLE)):
         os.makedirs(os.path.join(LOG_PATH, MODEL_TITLE))
