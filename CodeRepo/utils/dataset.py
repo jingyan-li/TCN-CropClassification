@@ -4,6 +4,9 @@ import numpy as np
 import h5py
 import pickle
 
+# Change target label to index
+LABEL_TO_INDEX = {20: 0, 21: 1, 27: 2, 30: 3, 36: 4, 38: 5, 42: 6, 45: 7, 46: 8, 48: 9, 49: 10, 50: 11, 51: 12}
+
 
 class Dataset(torch.utils.data.Dataset):
     def __init__(self, path, time_downsample_factor=1, num_channel=9, loadAllinMem=True):
@@ -71,6 +74,8 @@ class Dataset(torch.utils.data.Dataset):
 
         # Convert numpy array to torch tensor
         X = torch.from_numpy(X)
+        # TODO Map target original label to index
+        target = LABEL_TO_INDEX[target]
         target = torch.from_numpy(np.array(target)).float()
 
         # Temporal down-sampling
@@ -91,7 +96,7 @@ colordict = {'B04': '#a6cee3', 'NDWI': '#1f78b4', 'NDVI': '#b2df8a', 'RATIOVVVH'
              'B11': '#007c30', 'NDVVVH': '#00778a', 'BRIGHTNESS': '#000000', 'B06': '#0f1b5f'}
 plotbands = ["B02", "B03", "B04", "B08"]
 
-labels = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+label_index = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
           26, 27, 28, 29, 30, 31, 32, 33, 34, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 48, 49, 50, 51]
 
 label_names = ['Unknown', 'Apples', 'Beets', 'Berries', 'Biodiversity area', 'Buckwheat',
@@ -119,6 +124,17 @@ if __name__ == "__main__":
     gt_list = traindataset.return_labels()
     labels, pix_counts = np.unique(gt_list, return_counts=True)
 
+    print('Labels: ', labels)
+    # Mapping index with labels
+    label_to_index = {labels[i]: i for i in range(len(labels))}
+    label_to_name = {}
+    for l, n in enumerate(zip(label_index, label_names)):
+        if n[0] in labels:
+            label_to_name[n[0]] = n[1]
+    index_to_name = {label_to_index[l]:label_to_name[l] for l in labels}
+    print('label_to_index: ', label_to_index)
+    print('index_to_name: ', index_to_name)
+    print('label name lists: ', [n for k,n in index_to_name.items()])
     # Save label counts to file
     label_count = {_[0]:_[1]/len(gt_list) for _ in zip(labels,pix_counts)}
     for i in range(max(labels)+1):
@@ -128,6 +144,7 @@ if __name__ == "__main__":
     with open("label_count.pkl", "wb") as f:
         pickle.dump(label_weights, f)
 
+    # Plot histogram
     inds = pix_counts.argsort()
     pix_counts_sorted = pix_counts[inds]
     labels_sorted = labels[inds]
