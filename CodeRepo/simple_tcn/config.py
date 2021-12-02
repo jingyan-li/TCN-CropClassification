@@ -1,5 +1,5 @@
 config = dict()
-config["test"] = False
+config["test"] = True
 config["batch_size"] = 64
 config["cuda"] = True
 config["dropout"] = 0.05
@@ -15,8 +15,10 @@ config["log-interval"] = 500
 
 config["data-path"] = r"D:\jingyli\TCN-CropClassification\data\imgint_trainset_v2.hdf5"
 config["checkpoint-path"] = r"D:\jingyli\TCN-CropClassification\checkpoints"
-config["label-path"] = r"D:\jingyli\TCN-CropClassification\utils\label_count.pkl"
-config["useLabelWeight"] = False
+config["label-path"] = r"D:\jingyli\TCN-CropClassification\CodeRepo\utils\label_count.pkl"
+config["useLabelWeight"] = True
+config["label-weight-method"] = 'ivs'  # 'ivs','ivs-sqrt','ens'
+config["label-weight-beta"] = 0.99  # [0.9,0.99,0.999,0.9999]
 config["label-names"] = ['Maize', 'Meadow', 'Pasture', 'Potatoes', 'Spelt', 'Sugar beet', 'Sunflowers', 'Vegetables', 'Vines', 'Wheat', 'Winter barley', 'Winter rapeseed', 'Winter wheat']
     # ['Unknown', 'Apples', 'Beets', 'Berries', 'Biodiversity area', 'Buckwheat',
     #            'Chestnut', 'Chicory', 'Einkorn wheat', 'Fallow', 'Field bean', 'Forest',

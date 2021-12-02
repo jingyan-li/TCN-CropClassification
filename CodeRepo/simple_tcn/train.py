@@ -16,7 +16,7 @@ from simple_tcn.model import TCN
 from utils.dataset import Dataset
 from simple_tcn.config import config
 
-from utils.metrics import get_confmat_metrics
+from utils.metrics import get_confmat_metrics, get_label_weights
 
 # Visualize training
 wandb.init(project="ii-lab3", entity="jejejennea", mode="online")
@@ -66,12 +66,17 @@ input_channels = 4
 output_channels = [n_hunits]*n_levels   # TODO: Hidden units (channels)
 seq_length = 71  # Temporal length per sample
 steps = 0
+# Load label weights
 label_weights = None
 useLabelWeights = config["useLabelWeight"]
 if useLabelWeights:
     with open(label_path, "rb") as f:
-        label_weights = pickle.load(f)
-    label_weights = torch.Tensor(label_weights)
+        label_counts = pickle.load(f)
+    label_weights = torch.Tensor(
+        get_label_weights(config["label-weight-method"],
+                          label_counts,
+                          config["label-weight-beta"])
+    )
 label_names = config["label-names"]
 print(config)
 

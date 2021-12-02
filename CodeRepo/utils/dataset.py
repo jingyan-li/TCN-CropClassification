@@ -136,13 +136,13 @@ if __name__ == "__main__":
     print('index_to_name: ', index_to_name)
     print('label name lists: ', [n for k,n in index_to_name.items()])
     # Save label counts to file
-    label_count = {_[0]:_[1]/len(gt_list) for _ in zip(labels,pix_counts)}
-    for i in range(max(labels)+1):
-        if i not in label_count.keys():
-            label_count[i] = 0.
-    label_weights = [v for k, v in sorted(label_count.items(), key=lambda _:_[0])]
+    label_count = {_[0]:_[1] for _ in zip(labels,pix_counts)}
+    # for i in range(max(labels)+1):
+    #     if i not in label_count.keys():
+    #         label_count[i] = 0.
+    label_count_list = [v for k, v in sorted(label_count.items(), key=lambda _:_[0])]
     with open("label_count.pkl", "wb") as f:
-        pickle.dump(label_weights, f)
+        pickle.dump(label_count_list, f)
 
     # Plot histogram
     inds = pix_counts.argsort()
