@@ -3,7 +3,7 @@ import h5py
 from PIL import Image
 
 # Open hdf5 file
-testset = "D:\jingyli\II_Lab3\data/imgint_trainset.hdf5"
+testset = "D:\jingyli\II_Lab3\data\imgint_testset_v2.hdf5"
 testset = h5py.File(testset, "r")
 
 # Read data shape and labels
@@ -111,7 +111,7 @@ for i_x in range(target_map_RGB.shape[0]):
 
 
 img = Image.fromarray(np.uint8(target_map_RGB))
-img.save('gt_map.png')
+img.save('test_gt_map.png')
 
 # Visulize false composit image for the test region
 date = 56

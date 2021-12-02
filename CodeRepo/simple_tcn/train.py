@@ -132,8 +132,8 @@ f1_Table = wandb.Table(columns=label_names)
 precision_Table = wandb.Table(columns=label_names)
 recall_Table = wandb.Table(columns=label_names)
 
-def validation(label_weights):
 
+def validation(label_weights):
     model.eval()
     test_loss = 0
     correct = 0

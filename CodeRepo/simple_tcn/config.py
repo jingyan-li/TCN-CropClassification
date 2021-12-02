@@ -1,5 +1,5 @@
 config = dict()
-config["test"] = True
+config["test"] = False
 config["batch_size"] = 64
 config["cuda"] = True
 config["dropout"] = 0.05
@@ -13,9 +13,9 @@ config["seed"] = 2021
 
 config["log-interval"] = 500
 
-config["data-path"] = r"D:\jingyli\TCN-CropClassification\data\imgint_trainset_v2.hdf5"
-config["checkpoint-path"] = r"D:\jingyli\TCN-CropClassification\checkpoints"
-config["label-path"] = r"D:\jingyli\TCN-CropClassification\CodeRepo\utils\label_count.pkl"
+config["data-path"] = r"D:\jingyli\II_Lab3\data\imgint_trainset_v2.hdf5"
+config["checkpoint-path"] = r"D:\jingyli\II_Lab3\checkpoints"
+config["label-path"] = r"D:\jingyli\II_Lab3\CodeRepo\utils\label_count.pkl"
 config["useLabelWeight"] = True
 config["label-weight-method"] = 'ivs'  # 'ivs','ivs-sqrt','ens'
 config["label-weight-beta"] = 0.99  # [0.9,0.99,0.999,0.9999]
