@@ -66,10 +66,12 @@ input_channels = 4
 output_channels = [n_hunits]*n_levels   # TODO: Hidden units (channels)
 seq_length = 71  # Temporal length per sample
 steps = 0
-label_weights = []
-with open(label_path, "rb") as f:
-    label_weights = pickle.load(f)
-label_weights = torch.Tensor(label_weights)
+label_weights = None
+useLabelWeights = config["useLabelWeight"]
+if useLabelWeights:
+    with open(label_path, "rb") as f:
+        label_weights = pickle.load(f)
+    label_weights = torch.Tensor(label_weights)
 label_names = config["label-names"]
 print(config)
 
@@ -94,7 +96,9 @@ def train(ep, label_weights):
     model.train()
     for batch_idx, (data, target) in tqdm(enumerate(train_loader)):
         if CUDA:
-            data, target, label_weights = data.cuda(), target.cuda(), label_weights.cuda()
+            data, target  = data.cuda(), target.cuda()
+            if useLabelWeights:
+                label_weights = label_weights.cuda()
         data = torch.swapaxes(data, 1, 2)  # data of shape [batch_size, n_channels, input_length]
         data, target = Variable(data), Variable(target)
         # compute output and loss
@@ -132,7 +136,9 @@ def validation(label_weights):
         confusion_matrix = torch.zeros(n_classes, n_classes)
         for batch_idx, (data, target) in tqdm(enumerate(val_loader)):
             if CUDA:
-                data, target, label_weights = data.cuda(), target.cuda(), label_weights.cuda()
+                data, target = data.cuda(), target.cuda()
+                if useLabelWeights:
+                    label_weights = label_weights.cuda()
             data = torch.swapaxes(data, 1, 2)  # data of shape [batch_size, n_channels, input_length]
             data, target = Variable(data), Variable(target)
             output = model(data)

@@ -16,7 +16,7 @@ config["log-interval"] = 500
 config["data-path"] = r"D:\jingyli\TCN-CropClassification\data\imgint_trainset_v2.hdf5"
 config["checkpoint-path"] = r"D:\jingyli\TCN-CropClassification\checkpoints"
 config["label-path"] = r"D:\jingyli\TCN-CropClassification\utils\label_count.pkl"
-
+config["useLabelWeight"] = False
 config["label-names"] = ['Unknown', 'Apples', 'Beets', 'Berries', 'Biodiversity area', 'Buckwheat',
                'Chestnut', 'Chicory', 'Einkorn wheat', 'Fallow', 'Field bean', 'Forest',
                'Gardens', 'Grain', 'Hedge', 'Hemp', 'Hops', 'Legumes', 'Linen', 'Lupine',
