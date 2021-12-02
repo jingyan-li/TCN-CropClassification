@@ -16,7 +16,7 @@ from simple_tcn.model import TCN
 from utils.dataset import Dataset
 from simple_tcn.config import config
 
-from utils.metrics import get_confmat_metrics
+from utils.metrics import get_confmat_metrics, get_label_weights
 
 # Visualize training
 wandb.init(project="ii-lab3", entity="jejejennea", mode="online")
@@ -61,20 +61,23 @@ if torch.cuda.is_available():
     if not CUDA:
         print("WARNING: You have a CUDA device, so you should probably run with --cuda")
 # Initiate variables
-n_classes = 52  # TODO: No.classes = 49? or use 52?
+n_classes = 13  # TODO: No.classes = 49? or use 52?
 input_channels = 4
 output_channels = [n_hunits]*n_levels   # TODO: Hidden units (channels)
 seq_length = 71  # Temporal length per sample
 steps = 0
-label_names = config["label-names"]
-label_weights = []
-if config["useWeights"]:
+# Load label weights
+label_weights = None
+useLabelWeights = config["useLabelWeight"]
+if useLabelWeights:
     with open(label_path, "rb") as f:
-        label_weights = pickle.load(f)
-    label_weights = torch.Tensor(label_weights)
-else:
-    label_weights = None
-
+        label_counts = pickle.load(f)
+    label_weights = torch.Tensor(
+        get_label_weights(config["label-weight-method"],
+                          label_counts,
+                          config["label-weight-beta"])
+    )
+label_names = config["label-names"]
 print(config)
 
 # Data loader
@@ -98,9 +101,9 @@ def train(ep, label_weights):
     model.train()
     for batch_idx, (data, target) in tqdm(enumerate(train_loader)):
         if CUDA:
-            data, target = data.cuda(), target.cuda()
-        if config["useWeights"]:
-            label_weights = label_weights.cuda()
+            data, target  = data.cuda(), target.cuda()
+            if useLabelWeights:
+                label_weights = label_weights.cuda()
         data = torch.swapaxes(data, 1, 2)  # data of shape [batch_size, n_channels, input_length]
         data, target = Variable(data), Variable(target)
         # compute output and loss
@@ -139,8 +142,8 @@ def validation(label_weights):
         for batch_idx, (data, target) in tqdm(enumerate(val_loader)):
             if CUDA:
                 data, target = data.cuda(), target.cuda()
-            if config["useWeights"]:
-                label_weights = label_weights.cuda()
+                if useLabelWeights:
+                    label_weights = label_weights.cuda()
             data = torch.swapaxes(data, 1, 2)  # data of shape [batch_size, n_channels, input_length]
             data, target = Variable(data), Variable(target)
             output = model(data)
