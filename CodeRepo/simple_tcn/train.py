@@ -61,7 +61,7 @@ if torch.cuda.is_available():
     if not CUDA:
         print("WARNING: You have a CUDA device, so you should probably run with --cuda")
 # Initiate variables
-n_classes = 52  # TODO: No.classes = 49? or use 52?
+n_classes = 13  # TODO: No.classes = 49? or use 52?
 input_channels = 4
 output_channels = [n_hunits]*n_levels   # TODO: Hidden units (channels)
 seq_length = 71  # Temporal length per sample

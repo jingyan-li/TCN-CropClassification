@@ -6,22 +6,34 @@ import pickle
 
 
 class Dataset(torch.utils.data.Dataset):
-    def __init__(self, path, time_downsample_factor=1, num_channel=9):
+    def __init__(self, path, time_downsample_factor=1, num_channel=9, loadAllinMem=True):
+        '''
+
+        :param path: Path of dataset
+        :param time_downsample_factor:
+        :param num_channel: 4 = RGB+NIR
+        :param loadAllinMem: True to load all data in memory once (accelerate I/O time)
+        '''
         self.num_channel = num_channel
         self.time_downsample_factor = time_downsample_factor
         self.eval_mode = False
         self.path = path
         self.time_downsample_factor = time_downsample_factor
-        self.hasData = False
-        self.num_samples = 7349476
-        self.load_data()
+        self.loaAllinMem = loadAllinMem
+        self.load_data(loadAllinMem)
 
-    def load_data(self):
+    def load_data(self, loadAllinMem):
         print("Start loading...")
-        # Load all data in memory
-        with h5py.File(self.path, "r", libver='latest', swmr=True) as f:
-            self.data = f["data"][:].copy()
-            self.gt = f["gt"][:].copy()
+        if loadAllinMem:
+            # Load all data in memory
+            with h5py.File(self.path, "r", libver='latest', swmr=True) as f:
+                self.data = f["data"][:].copy()
+                self.gt = f["gt"][:].copy()
+        else:
+            # Open the data file
+            f = h5py.File(self.path, "r", libver='latest', swmr=True)
+            self.data = f["data"]
+            self.gt = f["gt"]
 
         data_shape = self.data.shape
         target_shape = self.gt.shape
@@ -41,7 +53,7 @@ class Dataset(torch.utils.data.Dataset):
         print('Number of classes: ', self.n_classes)
         print('Temporal length: ', self.temporal_length)
         print('Number of channels: ', self.num_channel)
-        self.hasData = True
+
 
     def return_labels(self):
         return self.gt
@@ -50,19 +62,16 @@ class Dataset(torch.utils.data.Dataset):
         return self.num_samples
 
     def __getitem__(self, idx):
-        # if not self.hasData:
-        #     self.load_data()
-
-        X = self.data[idx]
-        target = self.gt[idx]
+        if self.loaAllinMem:
+            X = self.data[idx]
+            target = self.gt[idx]
+        else:
+            X = self.data[idx]
+            target = self.gt[idx]
 
         # Convert numpy array to torch tensor
         X = torch.from_numpy(X)
         target = torch.from_numpy(np.array(target)).float()
-
-        # if self.eval_mode:
-        #     X = X.view()
-        #     target = target.view()
 
         # Temporal down-sampling
         X = X[...,0::self.time_downsample_factor, :self.num_channel]
@@ -102,8 +111,8 @@ def plot_bands(X):
     plt.savefig("bands.png", dpi=300, format="png", bbox_inches='tight')
 
 if __name__ == "__main__":
-    data_path = "D:\jingyli\II_Lab3\data/imgint_trainset.hdf5"
-    traindataset = Dataset(data_path)
+    data_path = "D:\jingyli\TCN-CropClassification\data\imgint_trainset_v2.hdf5"
+    traindataset = Dataset(data_path, loadAllinMem=False)
     X,y = traindataset.__getitem__(0)
     print(X.shape)
     print(y.shape)
@@ -127,5 +136,5 @@ if __name__ == "__main__":
 
     fig = plt.figure()
     plt.bar(label_names_sorted, pix_counts_sorted)
-    plt.xticks( rotation=90)
+    plt.xticks(rotation=90)
     plt.savefig("hist.png", dpi=300, format="png", bbox_inches='tight')
