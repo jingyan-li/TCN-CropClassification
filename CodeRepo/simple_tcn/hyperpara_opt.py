@@ -12,6 +12,7 @@ from torch.utils.data import random_split
 import pickle
 import torch.optim as optim
 import numpy as np
+from datetime import datetime
 
 
 CUDA = True
@@ -22,7 +23,7 @@ data_path = config["data-path"]
 dropout = 0.05
 label_path = config["label-path"]
 optimizer = config["optim"]
-epochs = 1
+epochs = 2
 SEED = 2021
 
 # Fix seed for reproducing
@@ -34,30 +35,30 @@ if torch.cuda.is_available():
         print("WARNING: You have a CUDA device, so you should probably run with --cuda")
 
 
-n_classes = 52
+n_classes = 13
 input_channels = 4
 seq_length = 71
 steps = 0
-label_weights = []
-with open(label_path, "rb") as f:
-    label_weights = pickle.load(f)
-label_weights = torch.Tensor(label_weights)
+# label_weights = []
+# with open(label_path, "rb") as f:
+#     label_weights = pickle.load(f)
+# label_weights = torch.Tensor(label_weights)
 label_names = config["label-names"]
 
 
-def train(ep, model, optimizer, train_loader, label_weights):
+def train(ep, model, optimizer, train_loader):
     global steps
     train_loss = 0
     model.train()
     for batch_idx, (data, target) in tqdm(enumerate(train_loader)):
         if CUDA:
-            data, target, label_weights = data.cuda(), target.cuda(), label_weights.cuda()
+            data, target = data.cuda(), target.cuda()
         data = torch.transpose(data, 1, 2)  # data of shape [batch_size, n_channels, input_length]
         data, target = Variable(data), Variable(target)
         optimizer.zero_grad()
         # compute output and loss
         output = model(data)
-        loss = F.cross_entropy(output, target, weight=label_weights)
+        loss = F.cross_entropy(output, target)
         # compute gradient and do update step
         optimizer.zero_grad()
         loss.backward()
@@ -76,7 +77,7 @@ def train(ep, model, optimizer, train_loader, label_weights):
         # torch.save(model.state_dict(), 'params.pkl')
 
 
-def validation(model, val_loader, label_weights):
+def validation(model, val_loader):
     # load model
     # model.load_state_dict(torch.load('params.pkl'))
     model.eval()
@@ -85,11 +86,11 @@ def validation(model, val_loader, label_weights):
     with torch.no_grad():
         for batch_idx, (data, target) in tqdm(enumerate(val_loader)):
             if CUDA:
-                data, target, label_weights = data.cuda(), target.cuda(), label_weights.cuda()
+                data, target = data.cuda(), target.cuda()
             data = torch.transpose(data, 1, 2)  # data of shape [batch_size, n_channels, input_length]
             data, target = Variable(data), Variable(target)
             output = model(data)
-            test_loss += F.cross_entropy(output, target, weight=label_weights).item()
+            test_loss += F.cross_entropy(output, target).item()
             pred = output.data.max(1, keepdim=False)[1]
             correct += pred.eq(target.data.view_as(pred)).cpu().sum()
 
@@ -100,16 +101,16 @@ def validation(model, val_loader, label_weights):
         print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
             test_loss, correct, len(val_loader.dataset),
             100. * correct / len(val_loader.dataset)))
-        return test_loss
+        return 100. * correct / len(val_loader.dataset)
 
 
-def start_train_and_test(epochs, model, optimizer, train_loader, val_loader, label_weights):
-    test_loss: list = []
+def start_train_and_test(epochs, model, optimizer, train_loader, val_loader):
+    test_acc: list = []
     for ep in range(1, epochs + 1):
-        train(ep, model, optimizer, train_loader, label_weights)
-        tloss = validation(model, val_loader, label_weights)
-        test_loss.append(tloss)
-    return np.mean(np.array(test_loss))
+        train(ep, model, optimizer, train_loader)
+        tacc = validation(model, val_loader)
+        test_acc.append(tacc)
+    return np.mean(np.array(test_acc))
 
 
 def objective(trail: optuna.Trial):
@@ -121,35 +122,46 @@ def objective(trail: optuna.Trial):
     print(f"Val_dset contains {len(val_dset)} pixels.")
 
     # Sampling subset of train and validation set to speed up the hyperparameter tuning
-    # SAMPLESIZE = 0.01
-    # sampling_train = np.random.randint(len(train_dset), size=round(len(train_dset) * SAMPLESIZE))
-    # train_dset = torch.utils.data.Subset(train_dset, sampling_train)
-    # sampling_val = np.random.randint(len(val_dset), size=round(len(val_dset) * SAMPLESIZE))
-    # val_dset = torch.utils.data.Subset(train_dset, sampling_val)
-    # print(f"After sampling, train_dset contains {len(train_dset)} pixels.")
-    # print(f"After sampling, val_dset contains {len(val_dset)} pixels.")
+    SAMPLESIZE = 0.2
+    sampling_train = np.random.randint(len(train_dset), size=round(len(train_dset) * SAMPLESIZE))
+    train_dset = torch.utils.data.Subset(train_dset, sampling_train)
+    sampling_val = np.random.randint(len(val_dset), size=round(len(val_dset) * SAMPLESIZE))
+    val_dset = torch.utils.data.Subset(train_dset, sampling_val)
+    print(f"After sampling, train_dset contains {len(train_dset)} pixels.")
+    print(f"After sampling, val_dset contains {len(val_dset)} pixels.")
 
     train_loader = torch.utils.data.DataLoader(train_dset, batch_size=batch_size, num_workers=0)
     val_loader = torch.utils.data.DataLoader(val_dset, batch_size=batch_size, num_workers=0)
 
-    n_levels = trail.suggest_int('levels', 5, 10)
+    n_levels = trail.suggest_int('levels', 5, 8)
     n_hunits = trail.suggest_int('nhid', 25, 50)
     output_channels = [n_hunits]*n_levels
     lr = trail.suggest_loguniform('lr', 1e-5, 1e-1)
-    kernel_size = trail.suggest_int('kernel_size', 3, 10)
+    kernel_size = trail.suggest_int('kernel_size', 3, 8)
+
 
     model = TCN(input_channels, n_classes, output_channels, kernel_size=kernel_size, dropout=dropout)
     if CUDA:
         model.cuda()
 
     optimizer = getattr(optim, config["optim"])(model.parameters(), lr=lr)
-    loss = start_train_and_test(epochs, model, optimizer, train_loader, val_loader, label_weights)
-    return loss
+
+    acc = start_train_and_test(epochs, model, optimizer, train_loader, val_loader)
+    return acc
 
 
 def main():
-    study = optuna.create_study()
-    study.optimize(objective, n_trials=12)
+    study = optuna.create_study(direction="maximize")
+    study.optimize(objective, n_trials=15)
+
+    fig = optuna.visualization.plot_optimization_history()
+    fig.show()
+    dt = datetime.now()
+    fig.savefig(f"Fig_{dt.month}.{dt.day}_{dt.hour}.{dt.minute}.png")
+
+    # with open(f"Hyperpara_{dt.month}.{dt.day}_{dt.hour}.{dt.minute}", "w") as f:
+    #     f.write(f"Number of finished trials: {len(study.trials)} \n")
+
     print('Number of finished trials: ', len(study.trials))
 
     print('Best trial:')
@@ -160,6 +172,7 @@ def main():
     print('  Params: ')
     for key, value in trial.params.items():
         print('    {}: {}'.format(key, value))
+
 
 
 if __name__ == '__main__':
