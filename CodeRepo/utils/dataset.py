@@ -4,18 +4,17 @@ import numpy as np
 import h5py
 import pickle
 
-# Change target label to index
-LABEL_TO_INDEX = {20: 0, 21: 1, 27: 2, 30: 3, 36: 4, 38: 5, 42: 6, 45: 7, 46: 8, 48: 9, 49: 10, 50: 11, 51: 12}
-
 
 class Dataset(torch.utils.data.Dataset):
-    def __init__(self, path, time_downsample_factor=1, num_channel=9, loadAllinMem=True, dset_type="train"):
+    def __init__(self, path, LABEL_TO_INDEX, time_downsample_factor=1, num_channel=9, loadAllinMem=True, dset_type="train"):
         '''
 
-        :param path: Path of dataset
+        :param path:
+        :param LABEL_TO_INDEX: Map labels (0-51) to index (-1 - 12)
         :param time_downsample_factor:
-        :param num_channel: 4 = RGB+NIR
+        :param num_channel:
         :param loadAllinMem: True to load all data in memory once (accelerate I/O time)
+        :param dset_type:
         '''
         self.num_channel = num_channel
         self.time_downsample_factor = time_downsample_factor
@@ -25,6 +24,7 @@ class Dataset(torch.utils.data.Dataset):
         self.loaAllinMem = loadAllinMem
         self.dset_type = dset_type
         self.load_data(loadAllinMem)
+        self.label_to_index = LABEL_TO_INDEX
 
     def load_data(self, loadAllinMem):
         print("Start loading...")
@@ -77,7 +77,7 @@ class Dataset(torch.utils.data.Dataset):
         # Convert numpy array to torch tensor
         X = torch.from_numpy(X)
         # TODO Map target original label to index
-        target = LABEL_TO_INDEX[target]
+        target = self.label_to_index[target]
         target = torch.from_numpy(np.array(target)).float()
 
         # Temporal down-sampling
@@ -118,9 +118,9 @@ def plot_bands(X):
     plt.savefig("bands.png", dpi=300, format="png", bbox_inches='tight')
 
 if __name__ == "__main__":
-    dset_type = "test"
+    dset_type = "train"
     data_path = f"D:\jingyli\TCN-CropClassification\data\imgint_{dset_type}set_v2.hdf5"
-    traindataset = Dataset(data_path, loadAllinMem=False, dset_type=dset_type)
+    traindataset = Dataset(data_path, loadAllinMem=True, dset_type=dset_type)
     X,y = traindataset.__getitem__(0)
     print(X.shape)
     print(y.shape)
@@ -135,7 +135,11 @@ if __name__ == "__main__":
     print(labels_sorted)
 
     label_names_sorted = [label_names[label_index.index(x)] for x in labels_sorted]
+    label_idx_sorted = labels_sorted
     print(label_names_sorted[::-1])
+    print(label_idx_sorted[::-1])
+    label_to_idx = {l: _ for _, l in enumerate(label_idx_sorted[::-1])}
+    print(label_to_idx)
 
     fig = plt.figure()
     plt.bar(label_names_sorted, pix_counts_sorted)

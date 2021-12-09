@@ -14,7 +14,7 @@ sys.path.append("../../")
 import os
 from simple_tcn.model import TCN
 from utils.dataset import Dataset
-from simple_tcn.config import config
+from simple_tcn.train_config import config
 
 from utils.metrics import get_confmat_metrics, get_label_weights
 
@@ -78,11 +78,15 @@ if useLabelWeights:
                           config["label-weight-beta"])
     )
 label_names = config["label-names"]
+label_to_idx = config["label-to-index"]
 print(config)
 
 # Data loader
-dataset = Dataset(path=data_path, time_downsample_factor=1, num_channel=input_channels)
+dataset = Dataset(LABEL_TO_INDEX=label_to_idx,
+                  path=data_path,
+                  time_downsample_factor=1, num_channel=input_channels)
 RANDOM_SPLIT = int(dataset.__len__()*0.8)
+# Split train/validation
 train_dset, val_dset = random_split(dataset, [RANDOM_SPLIT, dataset.__len__()-RANDOM_SPLIT])
 train_loader = torch.utils.data.DataLoader(train_dset, batch_size=batch_size, num_workers=0)
 val_loader = torch.utils.data.DataLoader(val_dset, batch_size=batch_size, num_workers=0)
@@ -168,7 +172,6 @@ def validation(label_weights):
         wandb.log({
             "val_loss": test_loss,
             "val_acc": 100. * correct / len(val_loader.dataset),
-            # "val_confmat": wandb.Table(columns=label_names, data=confusion_matrix.numpy().tolist()),
             "val_f1_intrain": f1_Table,
             "val_precision_intrain": precision_Table,
             "val_recall_intrain": recall_Table,
