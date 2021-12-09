@@ -19,8 +19,9 @@ config["label-path"] = r"D:\jingyli\II_Lab3\CodeRepo\utils\label_count.pkl"
 config["useLabelWeight"] = True
 config["label-weight-method"] = 'ivs'  # 'ivs','ivs-sqrt','ens'
 config["label-weight-beta"] = 0.99  # [0.9,0.99,0.999,0.9999]
-config["label-names"] = ['Maize', 'Meadow', 'Pasture', 'Potatoes', 'Spelt', 'Sugar beet', 'Sunflowers', 'Vegetables', 'Vines', 'Wheat', 'Winter barley', 'Winter rapeseed', 'Winter wheat']
-    # ['Unknown', 'Apples', 'Beets', 'Berries', 'Biodiversity area', 'Buckwheat',
+config["label-names"] = ['Meadow', 'Winter wheat', 'Maize', 'Pasture', 'Sugar beet', 'Winter barley', 'Winter rapeseed', 'Vegetables', 'Potatoes', 'Wheat', 'Sunflowers', 'Vines', 'Spelt']
+
+# ['Unknown', 'Apples', 'Beets', 'Berries', 'Biodiversity area', 'Buckwheat',
     #            'Chestnut', 'Chicory', 'Einkorn wheat', 'Fallow', 'Field bean', 'Forest',
     #            'Gardens', 'Grain', 'Hedge', 'Hemp', 'Hops', 'Legumes', 'Linen', 'Lupine',
     #            'Maize', 'Meadow', 'Mixed crop', 'Multiple', 'Mustard', '25-Undefined', 'Oat', 'Pasture', 'Pears',

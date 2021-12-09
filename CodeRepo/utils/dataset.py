@@ -9,7 +9,7 @@ LABEL_TO_INDEX = {20: 0, 21: 1, 27: 2, 30: 3, 36: 4, 38: 5, 42: 6, 45: 7, 46: 8,
 
 
 class Dataset(torch.utils.data.Dataset):
-    def __init__(self, path, time_downsample_factor=1, num_channel=9, loadAllinMem=True):
+    def __init__(self, path, time_downsample_factor=1, num_channel=9, loadAllinMem=True, dset_type="train"):
         '''
 
         :param path: Path of dataset
@@ -23,6 +23,7 @@ class Dataset(torch.utils.data.Dataset):
         self.path = path
         self.time_downsample_factor = time_downsample_factor
         self.loaAllinMem = loadAllinMem
+        self.dset_type = dset_type
         self.load_data(loadAllinMem)
 
     def load_data(self, loadAllinMem):
@@ -32,6 +33,11 @@ class Dataset(torch.utils.data.Dataset):
             with h5py.File(self.path, "r", libver='latest', swmr=True) as f:
                 self.data = f["data"][:].copy()
                 self.gt = f["gt"][:].copy()
+            # Reshape test data from (24,24,71,4) to (-1,71,4)
+            temporal_length = self.data.shape[-2]
+            if self.dset_type == "test":
+                self.data = self.data.reshape(-1, temporal_length, self.num_channel)
+                self.gt = self.gt.reshape(-1)
         else:
             # Open the data file
             f = h5py.File(self.path, "r", libver='latest', swmr=True)
@@ -65,12 +71,8 @@ class Dataset(torch.utils.data.Dataset):
         return self.num_samples
 
     def __getitem__(self, idx):
-        if self.loaAllinMem:
-            X = self.data[idx]
-            target = self.gt[idx]
-        else:
-            X = self.data[idx]
-            target = self.gt[idx]
+        X = self.data[idx]
+        target = self.gt[idx]
 
         # Convert numpy array to torch tensor
         X = torch.from_numpy(X)
@@ -116,42 +118,32 @@ def plot_bands(X):
     plt.savefig("bands.png", dpi=300, format="png", bbox_inches='tight')
 
 if __name__ == "__main__":
-    data_path = "D:\jingyli\TCN-CropClassification\data\imgint_trainset_v2.hdf5"
-    traindataset = Dataset(data_path, loadAllinMem=False)
+    dset_type = "test"
+    data_path = f"D:\jingyli\TCN-CropClassification\data\imgint_{dset_type}set_v2.hdf5"
+    traindataset = Dataset(data_path, loadAllinMem=False, dset_type=dset_type)
     X,y = traindataset.__getitem__(0)
     print(X.shape)
     print(y.shape)
     gt_list = traindataset.return_labels()
     labels, pix_counts = np.unique(gt_list, return_counts=True)
-
     print('Labels: ', labels)
-    # Mapping index with labels
-    label_to_index = {labels[i]: i for i in range(len(labels))}
-    label_to_name = {}
-    for l, n in enumerate(zip(label_index, label_names)):
-        if n[0] in labels:
-            label_to_name[n[0]] = n[1]
-    index_to_name = {label_to_index[l]:label_to_name[l] for l in labels}
-    print('label_to_index: ', label_to_index)
-    print('index_to_name: ', index_to_name)
-    print('label name lists: ', [n for k,n in index_to_name.items()])
-    # Save label counts to file
-    label_count = {_[0]:_[1] for _ in zip(labels,pix_counts)}
-    # for i in range(max(labels)+1):
-    #     if i not in label_count.keys():
-    #         label_count[i] = 0.
-    label_count_list = [v for k, v in sorted(label_count.items(), key=lambda _:_[0])]
-    with open("label_count.pkl", "wb") as f:
-        pickle.dump(label_count_list, f)
 
     # Plot histogram
     inds = pix_counts.argsort()
     pix_counts_sorted = pix_counts[inds]
     labels_sorted = labels[inds]
+    print(labels_sorted)
 
-    label_names_sorted = [label_names[labels.tolist().index(x)] for x in labels_sorted]
+    label_names_sorted = [label_names[label_index.index(x)] for x in labels_sorted]
+    print(label_names_sorted[::-1])
 
     fig = plt.figure()
     plt.bar(label_names_sorted, pix_counts_sorted)
     plt.xticks(rotation=90)
-    plt.savefig("hist.png", dpi=300, format="png", bbox_inches='tight')
+    plt.savefig(f"hist_{dset_type}.png", dpi=300, format="png", bbox_inches='tight')
+
+    # Mapping index with labels
+    print("Pixel counts, ", pix_counts_sorted[::-1])
+    with open(f"label_count_{dset_type}.pkl", "wb") as f:
+        pickle.dump(pix_counts_sorted[::-1], f)
+
