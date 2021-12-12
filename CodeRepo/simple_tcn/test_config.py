@@ -1,14 +1,14 @@
 config = dict()
-config["test"] = True
-config["batch_size"] = 64
-config["cuda"] = False
-config["dropout"] = 0.05
+config["test"] = False
+config["batch_size"] = 128
+config["cuda"] = True
+config["dropout"] = 0.01
 config["epochs"] = 20
 config["kernel-size"] = 5
 config["levels"] = 6
-config["learning-rate"] = 0.01
+config["learning-rate"] = 0.0005
 config["optim"] = "Adam"
-config["nhid"] = 25
+config["nhid"] = 40
 config["seed"] = 2021
 
 config["log-interval"] = 500
