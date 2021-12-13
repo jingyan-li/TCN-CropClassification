@@ -17,7 +17,7 @@ class TCN(nn.Module):
         :param dropout:
         '''
         super(TCN, self).__init__()
-        self.tcn = TemporalConvNet(input_size, num_channels, kernel_size=kernel_size, dropout=dropout, useRes=False)
+        self.tcn = TemporalConvNet(input_size, num_channels, kernel_size=kernel_size, dropout=dropout)
         self.linear = nn.Linear(num_channels[-1], output_size)
 
     def forward(self, inputs):

@@ -14,7 +14,7 @@ config["seed"] = 2021
 config["log-interval"] = 500
 
 config["data-path"] = r"../../data/imgint_testset_v2.hdf5"
-config["checkpoint-path"] = r"../../checkpoints"
+config["checkpoint-path"] = r"../../checkpoints_simple"
 config["label-path"] = r"../utils/label_count_test.pkl"
 
 config["label-names"] = ['Meadow', 'Winter wheat', 'Maize', 'Pasture',

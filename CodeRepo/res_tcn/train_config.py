@@ -13,9 +13,9 @@ config["seed"] = 2021
 
 config["log-interval"] = 500
 
-config["data-path"] = r"../../data/imgint_trainset_v2.hdf5"
-config["checkpoint-path"] = r"../../checkpoints_simple"
-config["label-path"] = r"../utils/label_count_train.pkl"
+config["data-path"] = r"D:\jingyli\II_Lab3\data\imgint_trainset_v2.hdf5"
+config["checkpoint-path"] = r"D:\jingyli\II_Lab3\checkpoints"
+config["label-path"] = r"D:\jingyli\II_Lab3\CodeRepo\utils\label_count_train.pkl"
 config["useLabelWeight"] = True
 config["label-weight-method"] = 'ens'  # 'ivs','ivs-sqrt','ens'
 config["label-weight-beta"] = 0.99  # [0.9,0.99,0.999,0.9999]

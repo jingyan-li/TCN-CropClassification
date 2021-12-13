@@ -17,7 +17,7 @@ class Chomp1d(nn.Module):
 
 
 class TemporalBlock(nn.Module):
-    def __init__(self, n_inputs, n_outputs, kernel_size, stride, dilation, padding, dropout=0.2):
+    def __init__(self, n_inputs, n_outputs, kernel_size, stride, dilation, padding, dropout=0.2, useRes=True):
         super(TemporalBlock, self).__init__()
         self.conv1 = weight_norm(nn.Conv1d(n_inputs, n_outputs, kernel_size,
                                            stride=stride, padding=padding, dilation=dilation))
@@ -37,6 +37,8 @@ class TemporalBlock(nn.Module):
         self.relu = nn.ReLU()
         self.init_weights()
 
+        self.useRes = useRes
+
     def init_weights(self):
         self.conv1.weight.data.normal_(0, 0.01)
         self.conv2.weight.data.normal_(0, 0.01)
@@ -45,12 +47,15 @@ class TemporalBlock(nn.Module):
 
     def forward(self, x):
         out = self.net(x)
-        res = x if self.downsample is None else self.downsample(x)
-        return self.relu(out + res)
+        if self.useRes:
+            res = x if self.downsample is None else self.downsample(x)
+            return self.relu(out + res)
+        else:
+            return self.relu(out)
 
 
 class TemporalConvNet(nn.Module):
-    def __init__(self, num_inputs, num_channels, kernel_size=2, dropout=0.2):
+    def __init__(self, num_inputs, num_channels, kernel_size=2, dropout=0.2, useRes=True):
         '''
 
         :param num_inputs: integer, number of input channels
@@ -66,7 +71,7 @@ class TemporalConvNet(nn.Module):
             in_channels = num_inputs if i == 0 else num_channels[i-1]
             out_channels = num_channels[i]
             layers += [TemporalBlock(in_channels, out_channels, kernel_size, stride=1, dilation=dilation_size,
-                                     padding=(kernel_size-1) * dilation_size, dropout=dropout)]
+                                     padding=(kernel_size-1) * dilation_size, dropout=dropout, useRes=useRes)]
 
         self.network = nn.Sequential(*layers)
 
