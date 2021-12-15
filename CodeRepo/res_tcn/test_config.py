@@ -2,7 +2,7 @@ config = dict()
 config["test"] = False
 config["batch_size"] = 128
 config["cuda"] = True
-config["dropout"] = 0.01
+config["dropout"] = 0.05
 config["epochs"] = 20
 config["kernel-size"] = 5
 config["levels"] = 6
@@ -14,7 +14,7 @@ config["seed"] = 2021
 config["log-interval"] = 500
 
 config["data-path"] = r"../../data/imgint_testset_v2.hdf5"
-config["checkpoint-path"] = r"../../checkpoints"
+config["checkpoint-path"] = r"../../checkpoints/useRes"
 config["label-path"] = r"../utils/label_count_test.pkl"
 
 config["label-names"] = ['Meadow', 'Winter wheat', 'Maize', 'Pasture',
