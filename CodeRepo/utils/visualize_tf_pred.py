@@ -1,3 +1,5 @@
+import os.path
+
 import numpy as np
 import h5py
 from PIL import Image
@@ -55,7 +57,7 @@ colordict = {'Unknown': [255, 255, 255],
                      'Winter wheat': [124, 252, 0]}
 
 
-def visualization(path, type="predict"):
+def visualization(path,img_path,type="predict"):
     print("To path ", path)
     testset = path
     testset = h5py.File(testset, "r")
@@ -108,7 +110,7 @@ def visualization(path, type="predict"):
 
 
         img = Image.fromarray(np.uint8(target_map_RGB))
-        img.save('pred_classes_v2.png')
+        img.save(os.path.join(img_path, 'pred_classes.png'))
     else:
         testset_target = testset["tf"][...]
 
@@ -159,13 +161,21 @@ def visualization(path, type="predict"):
                 target_map_RGB[i_x, i_y, :] = np.array(target_pix_color)
 
         img = Image.fromarray(np.uint8(target_map_RGB))
-        img.save('pred_tf.png')
+        img.save(os.path.join(img_path, 'pred_tf.png'))
 
     # Close hdf5 file
     testset.close()
 
 
 if __name__ == "__main__":
+    path = f"../../checkpoints_simple/"
+    
+    img_type = "tf"  # "predict" or "tf"
+    h5_path = os.path.join(path, f"last_{img_type}.h5")
+    img_path = path
+    visualization(h5_path, img_path=img_path, type=img_type)
+
     img_type = "predict"  # "predict" or "tf"
-    path = f"../../checkpoints/useRes/last_{img_type}.h5"
-    visualization(path, type=img_type)
+    h5_path = os.path.join(path, f"last_{img_type}.h5")
+    img_path = path
+    visualization(h5_path, img_path=img_path, type=img_type)
