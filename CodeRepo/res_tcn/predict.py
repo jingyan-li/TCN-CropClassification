@@ -12,8 +12,8 @@ import pandas as pd
 from utils.metrics import get_label_weights, get_confmat_metrics
 
 sys.path.append("../../")
-from simple_tcn.model import TCN
-from simple_tcn.test_config import config
+from res_tcn.model import TCN
+from res_tcn.test_config import config
 from utils.dataset import Dataset
 
 

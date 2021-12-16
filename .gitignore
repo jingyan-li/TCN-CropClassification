@@ -1,5 +1,6 @@
 data
 checkpoints
+checkpoints_simple
 *.h5py
 *.log
 *.json
@@ -10,4 +11,4 @@ checkpoints
 **/.idea
 **/wandb
 *.pyc
-
+**/.ipynb_checkpoints/**

@@ -12,9 +12,9 @@ import argparse
 import sys
 sys.path.append("../../")
 import os
-from simple_tcn.model import TCN
+from res_tcn.model import TCN
 from utils.dataset import Dataset
-from simple_tcn.train_config import config
+from res_tcn.train_config import config
 
 from utils.metrics import get_confmat_metrics, get_label_weights
 
