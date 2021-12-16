@@ -169,7 +169,7 @@ def visualization(path,img_path,type="predict"):
 
 if __name__ == "__main__":
     path = f"../../checkpoints_simple/"
-    
+
     img_type = "tf"  # "predict" or "tf"
     h5_path = os.path.join(path, f"last_{img_type}.h5")
     img_path = path
