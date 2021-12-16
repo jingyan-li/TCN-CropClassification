@@ -13,15 +13,15 @@ import pickle
 import torch.optim as optim
 import numpy as np
 from datetime import datetime
+import logging
 
 
 CUDA = True
-batch_size = 64
-TEST = False
-log_interval = 500 if not TEST else 10
+batch_size = 128
+log_interval = 5000
 data_path = config["data-path"]
-dropout = 0.05
-label_path = config["label-path"]
+# dropout = 0.05
+# label_path = config["label-path"]
 optimizer = config["optim"]
 epochs = 2
 SEED = 2021
@@ -67,13 +67,18 @@ def train(ep, model, optimizer, train_loader):
         train_loss += loss
         steps += 1
         if batch_idx > 0 and batch_idx % log_interval == 0:
-            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}\tSteps: {}'.format(
-                ep, batch_idx * batch_size, len(train_loader.dataset),
-                100. * batch_idx / len(train_loader), train_loss.item()/log_interval, steps))
+            if batch_idx >= int(len(train_loader.dataset)/batch_size):
+                print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}\tSteps: {}'.format(
+                    ep, len(train_loader.dataset), len(train_loader.dataset),
+                        100. * len(train_loader) / len(train_loader), train_loss.item()/log_interval, steps))
+                break
+            else:
+                print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}\tSteps: {}'.format(
+                    ep, (batch_idx+1) * batch_size, len(train_loader.dataset),
+                    100. * (batch_idx+1) / len(train_loader), train_loss.item()/log_interval, steps))
+
             # wandb.log({"loss": train_loss.item()/log_interval})
             train_loss = 0
-            if TEST:
-                break
         # torch.save(model.state_dict(), 'params.pkl')
 
 
@@ -94,8 +99,15 @@ def validation(model, val_loader):
             pred = output.data.max(1, keepdim=False)[1]
             correct += pred.eq(target.data.view_as(pred)).cpu().sum()
 
-            if TEST and batch_idx > 10:
-                break
+            # if batch_idx >= int(len(val_loader.dataset) / batch_size):
+            #     print('[{}/{} ({:.0f}%)]\tLoss: {:.6f}\t'.format(
+            #         len(val_loader.dataset), len(val_loader.dataset),
+            #         100. * len(val_loader) / len(val_loader), test_loss/(batch_idx+1)))
+            #     break
+            # else:
+            #     print('[{}/{} ({:.0f}%)]\tLoss: {:.6f}\t'.format(
+            #         (batch_idx + 1) * batch_size, len(val_loader.dataset),
+            #             100. * (batch_idx + 1) / len(val_loader), test_loss/(batch_idx+1)))
 
         test_loss /= batch_idx + 1
         print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
@@ -104,12 +116,17 @@ def validation(model, val_loader):
         return 100. * correct / len(val_loader.dataset)
 
 
-def start_train_and_test(epochs, model, optimizer, train_loader, val_loader):
+def start_train_and_test(trial, epochs, model, optimizer, train_loader, val_loader):
     test_acc: list = []
     for ep in range(1, epochs + 1):
         train(ep, model, optimizer, train_loader)
         tacc = validation(model, val_loader)
         test_acc.append(tacc)
+
+        # Handle pruning based on the intermediate value.
+        if trial.should_prune():
+            raise optuna.TrialPruned()
+
     return np.mean(np.array(test_acc))
 
 
@@ -122,7 +139,7 @@ def objective(trail: optuna.Trial):
     print(f"Val_dset contains {len(val_dset)} pixels.")
 
     # Sampling subset of train and validation set to speed up the hyperparameter tuning
-    SAMPLESIZE = 0.2
+    SAMPLESIZE = 0.3
     sampling_train = np.random.randint(len(train_dset), size=round(len(train_dset) * SAMPLESIZE))
     train_dset = torch.utils.data.Subset(train_dset, sampling_train)
     sampling_val = np.random.randint(len(val_dset), size=round(len(val_dset) * SAMPLESIZE))
@@ -138,6 +155,7 @@ def objective(trail: optuna.Trial):
     output_channels = [n_hunits]*n_levels
     lr = trail.suggest_loguniform('lr', 1e-5, 1e-1)
     kernel_size = trail.suggest_int('kernel_size', 3, 8)
+    dropout = trail.suggest_float('dropout', 0, 0.1)
 
 
     model = TCN(input_channels, n_classes, output_channels, kernel_size=kernel_size, dropout=dropout)
@@ -146,18 +164,13 @@ def objective(trail: optuna.Trial):
 
     optimizer = getattr(optim, config["optim"])(model.parameters(), lr=lr)
 
-    acc = start_train_and_test(epochs, model, optimizer, train_loader, val_loader)
+    acc = start_train_and_test(trail, epochs, model, optimizer, train_loader, val_loader)
     return acc
 
-
 def main():
-    study = optuna.create_study(direction="maximize")
+    optuna.logging.get_logger("optuna").addHandler(logging.StreamHandler(sys.stdout))
+    study = optuna.create_study(direction="maximize", pruner=optuna.pruners.MedianPruner())
     study.optimize(objective, n_trials=15)
-
-    fig = optuna.visualization.plot_optimization_history()
-    fig.show()
-    dt = datetime.now()
-    fig.savefig(f"Fig_{dt.month}.{dt.day}_{dt.hour}.{dt.minute}.png")
 
     # with open(f"Hyperpara_{dt.month}.{dt.day}_{dt.hour}.{dt.minute}", "w") as f:
     #     f.write(f"Number of finished trials: {len(study.trials)} \n")
@@ -173,6 +186,16 @@ def main():
     for key, value in trial.params.items():
         print('    {}: {}'.format(key, value))
 
+    df = study.trials_dataframe().drop(['state', 'datetime_start', 'datetime_complete', 'duration', 'number'], axis=1)
+    #df.tail(5)
+    print(df)
+
+    fig1 = optuna.visualization.plot_param_importances(study)
+    fig1.show()
+    fig2 = optuna.visualization.plot_optimization_history(study)
+    fig2.show()
+    fig3 = optuna.visualization.plot_parallel_coordinate(study)
+    fig3.show()
 
 
 if __name__ == '__main__':
