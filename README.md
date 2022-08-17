@@ -1,5 +1,4 @@
 # CropClassification-TCN
- Image Interpretation Lab 3
 
 ## Models
 
